@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Driver Files">
+      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
+      <Extensions>inf;inv;inx;mof;mc;</Extensions>
+    </Filter>
+    <Filter Include="Header Files\utils">
+      <UniqueIdentifier>{c5c932b7-6a98-40d4-b1b1-4bec3c6b05aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\native">
+      <UniqueIdentifier>{838ce3de-54a2-424f-916b-a1f2bba3aae6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{ac050a89-42e5-48f7-9bfc-6c69a35b101b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\native">
+      <UniqueIdentifier>{bd16c659-8c2b-4bfd-9722-39c24b3662d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\comms">
+      <UniqueIdentifier>{4208d9f3-fc24-4f23-baea-3f8369712258}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="lotus.inf">
+      <Filter>Driver Files</Filter>
+    </Inf>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\mem.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="native\driver.cpp">
+      <Filter>Source Files\native</Filter>
+    </ClCompile>
+    <ClCompile Include="native\imports.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="comms\handler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".clang-format">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="utils\log.hpp">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\mem.hpp">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="native\driver.hpp">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
+    <ClInclude Include="native\imports.hpp">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
+    <ClInclude Include="native\types.hpp">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\utils.hpp">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="comms\handler.hpp">
+      <Filter>Header Files\comms</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
