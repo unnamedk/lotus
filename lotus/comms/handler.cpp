@@ -75,8 +75,6 @@ void clear_mm_drivers( native::system_driver& ntoskrnl, const UNICODE_STRING& na
 
 void handler::clear_loaded_drivers()
 {
-    utils::unlink_thread( PsGetCurrentProcess(), PsGetCurrentThreadId() );
-
     struct piddb_cache_entry_t
     {
         LIST_ENTRY list;
@@ -193,6 +191,8 @@ void handler::init()
 
 void handler::main_loop( void* )
 {
+    utils::unlink_thread( PsGetCurrentProcess(), PsGetCurrentThreadId() );
+
     void *shared_memory_base = nullptr;
     size_t view_size = 1000;
     if ( const auto status = ZwMapViewOfSection( g_section_handle, ZwCurrentProcess(), &shared_memory_base, 0, view_size, nullptr, &view_size, SECTION_INHERIT::ViewUnmap, 0, PAGE_READWRITE );
