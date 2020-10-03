@@ -10,7 +10,7 @@ void init()
 
     KeEnterGuardedRegion();
 
-    //handler::clear_loaded_drivers();
+    handler::clear_loaded_drivers();
     handler::init();
 
     KeLeaveGuardedRegion();
