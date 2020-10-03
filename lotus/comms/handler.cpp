@@ -3,6 +3,7 @@
 #include "../utils/mem.hpp"
 #include "../utils/log.hpp"
 
+#include "../native/system_process.hpp"
 #include "../native/imports.hpp"
 
 #include <memory>
@@ -186,6 +187,8 @@ void handler::init()
         return;
     }
 
+    //
+
     ZwClose( thread_handle );
 }
 
@@ -216,7 +219,8 @@ void handler::main_loop( void* )
     ULONG64 old_tick = current_tick();
 
     int loop_count = 0;
-
+    
+    // is using a mutex/event here better/faster/slower?
     while ( true ) {
         auto request = static_cast<kernel_base_request *>( shared_memory_base );
         if ( request->code == request_code::none ) {
@@ -245,5 +249,196 @@ void handler::main_loop( void* )
 
         loop_count = 0;
         old_tick = current_tick();
+
+        switch ( request->code ) {
+            case request_code::copy_mem: {
+                copy_memory( reinterpret_cast<copy_memory_request *>( request ) );
+                break;
+            }
+
+            case request_code::get_process_base: {
+                get_process_base( reinterpret_cast<process_base_request *>( request ) );
+                break;
+            }
+
+            case request_code::allocate_mem: {
+                allocate_memory( reinterpret_cast<handler::allocate_memory_request *>( request ) );
+                break;
+            }
+
+            case request_code::free_mem: {
+                free_memory( reinterpret_cast<handler::free_memory_request *>( request ) );
+                break;
+            }
+
+            case request_code::protect_mem: {
+                protect_memory( reinterpret_cast<handler::protect_memory_request *>( request ) );
+                break;
+            }
+
+            case request_code::query_mem: {
+                query_memory( reinterpret_cast<handler::query_memory_request *>( request ) );
+                break;
+            }
+
+            case request_code::remove_nx_prot: {
+                remove_nx_protect( reinterpret_cast<handler::remove_nx_protect_request *>( request ) );
+                break;
+            }
+        }
+
+        // request finished, cleanup status
+        request->status = request_status::done;
+        request->code = request_code::none;
     }
+}
+
+void handler::copy_memory( copy_memory_request *request )
+{
+    if ( ( request->source_address > 0x7FFFFFFFFFFFull ) ||
+        ( request->target_address > 0x7FFFFFFFFFFFull ) ) {
+        request->result = STATUS_INVALID_ADDRESS;
+        return;
+    }
+
+    native::system_process source { request->source_pid };
+    if ( !source.is_valid() ) {
+        request->result = source.status();
+        return;
+    }
+
+    native::system_process target { request->target_pid };
+    if ( !target.is_valid() ) {
+        request->result = target.status();
+        return;
+    }
+
+    SIZE_T ret_size = 0;
+    request->result = MmCopyVirtualMemory(
+        source.get(), reinterpret_cast<void *>( request->source_address ), target.get(), reinterpret_cast<void *>( request->target_address ), request->size, KernelMode, &ret_size );
+}
+
+void handler::get_process_base( process_base_request *request )
+{
+    native::system_process p { request->pid };
+    if ( !p.is_valid() ) {
+        request->result = p.status();
+        return;
+    }
+
+    request->base = reinterpret_cast<unsigned long long>( PsGetProcessSectionBaseAddress( p.get() ) );
+    request->peb = reinterpret_cast<unsigned long long>( PsGetProcessPeb( p.get() ) );
+    request->result = STATUS_SUCCESS;
+}
+
+void handler::allocate_memory( allocate_memory_request *request )
+{
+    PEPROCESS process;
+
+    if ( auto ans = PsLookupProcessByProcessId( ( HANDLE ) request->pid, &process ); !NT_SUCCESS( ans ) ) {
+        request->result = ans;
+        return;
+    }
+
+    PVOID base_addr = &request->address;
+    SIZE_T sz = request->size;
+    auto protection = request->protection;
+
+    KAPC_STATE apc;
+    KeStackAttachProcess( process, &apc );
+
+    NTSTATUS status = ZwAllocateVirtualMemory( ZwCurrentProcess(), &base_addr, 0ull, &sz, MEM_COMMIT | MEM_RESERVE, protection );
+
+    KeUnstackDetachProcess( &apc );
+    ObDereferenceObject( process );
+
+    request->address = reinterpret_cast<unsigned long long>( base_addr );
+    request->size = sz;
+    request->result = status;
+}
+
+void handler::free_memory( free_memory_request *args_ptr )
+{
+    free_memory_request args = *args_ptr;
+    native::system_process process { args.pid };
+    if ( !process.is_valid() ) {
+        args_ptr->result = process.status();
+        return;
+    }
+
+    KAPC_STATE apc;
+    KeStackAttachProcess( process.get(), &apc );
+
+    args.result = ZwFreeVirtualMemory( ZwCurrentProcess(), ( void ** ) &args.address, &args.size, args.free_type );
+
+    KeUnstackDetachProcess( &apc );
+
+    args_ptr->result = args.result;
+}
+
+void handler::protect_memory( protect_memory_request *args_ptr )
+{
+    protect_memory_request args = *args_ptr;
+
+    native::system_process process { args.pid };
+    if ( !process.is_valid() ) {
+        args_ptr->result = process.status();
+        return;
+    }
+
+    ULONG old_protection = 0;
+
+    KAPC_STATE apc;
+    KeStackAttachProcess( process.get(), &apc );
+
+    args.result = ZwProtectVirtualMemory( ZwCurrentProcess(), ( void ** ) &args.address, &args.size, args.protection, &old_protection );
+
+    KeUnstackDetachProcess( &apc );
+
+    args_ptr->address = args.address;
+    args_ptr->protection = old_protection;
+    args_ptr->result = args.result;
+}
+
+void handler::query_memory( query_memory_request *args_ptr )
+{
+    query_memory_request args = *args_ptr;
+    native::system_process process { args.pid };
+    if ( !process.is_valid() ) {
+        args_ptr->result = process.status();
+        return;
+    }
+
+    SIZE_T ans = 0ul;
+
+    KAPC_STATE apc;
+    KeStackAttachProcess( process.get(), &apc );
+
+    args.result = ZwQueryVirtualMemory( ZwCurrentProcess(), reinterpret_cast<void *>( args.address ), static_cast<MEMORY_INFORMATION_CLASS>(MemoryBasicInformation),
+        &args.information, sizeof( MEMORY_BASIC_INFORMATION ), &ans );
+
+    KeUnstackDetachProcess( &apc );
+
+    args_ptr->result = args.result;
+}
+
+void handler::remove_nx_protect( remove_nx_protect_request *request )
+{
+    native::system_process process { request->pid };
+    if ( !process.is_valid() ) {
+        request->result = process.status();
+        return;
+    }
+
+    for ( std::uintptr_t page = request->address; page < ( request->address + request->size ); page += PAGE_SIZE ) {
+        if ( auto pte = imports::MiGetPteAddress( reinterpret_cast<void *>( page ) ); pte != nullptr ) {
+            if ( pte->Hardware.Valid ) {
+                pte->Hardware.NoExecute = 0;
+            }
+        } else {
+            request->result = STATUS_ACCESS_VIOLATION;
+        }
+    }
+
+    request->result = STATUS_SUCCESS;
 }

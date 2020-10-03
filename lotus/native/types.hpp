@@ -37,43 +37,76 @@ typedef union _MMPTE
     MMPTE_HARDWARE Hardware;
 } MMPTE, *PMMPTE;
 
-struct KPROCESS
-{
-    pad( 0x30 );
-    LIST_ENTRY ThreadListHead;
-    pad( 0x3f8 );
-};
+#pragma pack( push, 1 )
 
-#define offsetof( s, m ) ( ( size_t ) & ( ( ( s * ) 0 )->m ) )
+
 namespace w2004
 {
     struct KTHREAD
     {
-        pad( 0xe8 );
+        pad( 0xf0 );
         void *Teb;
-        pad( 0x130 );
+        pad( 0x128 );
         void *Process;
-        pad( 0x208);
+        pad( 0x208 );
     };
 
     struct ETHREAD
     {
         KTHREAD Tcb; // 0x0
         LARGE_INTEGER CreateTime; // 0x430
-        pad( 0x38 );
+        pad( 0x40 );
         CLIENT_ID Cid; // 0x478
-        pad( 0x50 );
+        pad( 0x48 );
         void *Win32StartAddress; // 0x4d0
         pad( 0x10 );
         LIST_ENTRY ThreadListEntry; // 0x4e8
+        pad(0x18);
+        union
+        {
+            ULONG CrossThreadFlags; //0x510
+            struct
+            {
+                ULONG Terminated : 1; //0x510
+                ULONG ThreadInserted : 1; //0x510
+                ULONG HideFromDebugger : 1; //0x510
+                ULONG ActiveImpersonationInfo : 1; //0x510
+                ULONG HardErrorsAreDisabled : 1; //0x510
+                ULONG BreakOnTermination : 1; //0x510
+                ULONG SkipCreationMsg : 1; //0x510
+                ULONG SkipTerminationMsg : 1; //0x510
+                ULONG CopyTokenOnOpen : 1; //0x510
+                ULONG ThreadIoPriority : 3; //0x510
+                ULONG ThreadPagePriority : 3; //0x510
+                ULONG RundownFail : 1; //0x510
+                ULONG UmsForceQueueTermination : 1; //0x510
+                ULONG IndirectCpuSets : 1; //0x510
+                ULONG DisableDynamicCodeOptOut : 1; //0x510
+                ULONG ExplicitCaseSensitivity : 1; //0x510
+                ULONG PicoNotifyExit : 1; //0x510
+                ULONG DbgWerUserReportActive : 1; //0x510
+                ULONG ForcedSelfTrimActive : 1; //0x510
+                ULONG SamplingCoverage : 1; //0x510
+                ULONG ReservedCrossThreadFlags : 8; //0x510
+            };
+        };
+    };
+
+    struct KPROCESS
+    {
+        pad( 0x30 );
+        LIST_ENTRY ThreadListHead;
+        pad( 0x3f8 );
     };
 
     struct EPROCESS
     {
         KPROCESS Pcb;
         pad( 0x8 );
-        void *UniqueProcessId;
-        LIST_ENTRY ActiveProcessLinks;
+        void *UniqueProcessId; // 0x440
+        LIST_ENTRY ActiveProcessLinks; // 0x448
+        pad( 0x188 );
+        LIST_ENTRY ThreadListHead; // 0x5e0
     };
 }
 
@@ -92,30 +125,65 @@ namespace w1803
     {
         KTHREAD Tcb;
         LARGE_INTEGER CreateTime; // 0x5f0
-        pad( 0x40 );
-        CLIENT_ID Cid; // 0x630
-        pad( 0x48 );
-        void *Win32StartAddress; // 0x4d0
-        pad( 0x10 );
-        LIST_ENTRY ThreadListEntry; // 0x4e8
-    };
-}
-
-namespace w1809
-{
-    using w1803::KTHREAD;
-
-    struct ETHREAD
-    {
-        KTHREAD Tcb;
-        LARGE_INTEGER CreateTime; // 0x5f0
         pad( 0x48 );
         CLIENT_ID Cid; // 0x638
         pad( 0x48 );
         void *Win32StartAddress; // 0x690
         pad( 0x10 );
         LIST_ENTRY ThreadListEntry; // 0x6a8
+        pad( 0x18 );
+        union
+        {
+            ULONG CrossThreadFlags; // 0x6d0
+            struct
+            {
+                ULONG Terminated : 1; 
+                ULONG ThreadInserted : 1; 
+                ULONG HideFromDebugger : 1; 
+                ULONG ActiveImpersonationInfo : 1; 
+                ULONG HardErrorsAreDisabled : 1; 
+                ULONG BreakOnTermination : 1; 
+                ULONG SkipCreationMsg : 1; 
+                ULONG SkipTerminationMsg : 1; 
+                ULONG CopyTokenOnOpen : 1; 
+                ULONG ThreadIoPriority : 3; 
+                ULONG ThreadPagePriority : 3; 
+                ULONG RundownFail : 1; 
+                ULONG UmsForceQueueTermination : 1; 
+                ULONG IndirectCpuSets : 1; 
+                ULONG DisableDynamicCodeOptOut : 1; 
+                ULONG ExplicitCaseSensitivity : 1; 
+                ULONG PicoNotifyExit : 1; 
+                ULONG DbgWerUserReportActive : 1; 
+                ULONG ForcedSelfTrimActive : 1; 
+                ULONG SamplingCoverage : 1; 
+                ULONG ReservedCrossThreadFlags : 8; 
+            };
+        };
     };
+
+    struct KPROCESS
+    {
+        pad( 0x2d8 );
+    };
+
+    struct EPROCESS
+    {
+        KPROCESS Pcb;
+        pad( 0x8 );
+        void *UniqueProcessId; // 0x2e0
+        LIST_ENTRY ActiveProcessLinks; // 0x2e8
+        pad( 0x190 );
+        LIST_ENTRY ThreadListHead; // 0x488
+    };
+}
+
+namespace w1809
+{
+    using w1803::KTHREAD;
+    using w1803::ETHREAD;
+    using w1803::KPROCESS;
+    using w1803::EPROCESS;
 }
 
 namespace w1903
@@ -139,22 +207,56 @@ namespace w1903
         void *Win32StartAddress; // 0x6a0
         pad( 0x10 );
         LIST_ENTRY ThreadListEntry; // 0x6b8
+        pad( 0x18 );
+        union
+        {
+            ULONG CrossThreadFlags; //0x6e0
+            struct
+            {
+                ULONG Terminated : 1; 
+                ULONG ThreadInserted : 1; 
+                ULONG HideFromDebugger : 1; 
+                ULONG ActiveImpersonationInfo : 1; 
+                ULONG HardErrorsAreDisabled : 1; 
+                ULONG BreakOnTermination : 1; 
+                ULONG SkipCreationMsg : 1; 
+                ULONG SkipTerminationMsg : 1; 
+                ULONG CopyTokenOnOpen : 1; 
+                ULONG ThreadIoPriority : 3; 
+                ULONG ThreadPagePriority : 3; 
+                ULONG RundownFail : 1; 
+                ULONG UmsForceQueueTermination : 1; 
+                ULONG IndirectCpuSets : 1; 
+                ULONG DisableDynamicCodeOptOut : 1; 
+                ULONG ExplicitCaseSensitivity : 1; 
+                ULONG PicoNotifyExit : 1; 
+                ULONG DbgWerUserReportActive : 1; 
+                ULONG ForcedSelfTrimActive : 1; 
+                ULONG SamplingCoverage : 1; 
+                ULONG ReservedCrossThreadFlags : 8;
+            };
+        };
+    };
+
+    struct KPROCESS
+    {
+        pad( 0x2e0 );
+    };
+
+    struct EPROCESS
+    {
+        KPROCESS Pcb;
+        pad( 0x8 );
+        void *UniqueProcessId; // 0x2e8
+        LIST_ENTRY ActiveProcessLinks; // 0x2f0
+        pad( 0x188 );
+        LIST_ENTRY ThreadListHead; // 0x488
     };
 }
 
 namespace w1909
 {
-    using w1903::KTHREAD;
-
-    struct ETHREAD
-    {
-        KTHREAD Tcb;
-        LARGE_INTEGER CreateTime; // 0x600
-        pad( 0x40 );
-        CLIENT_ID Cid; // 0x648
-        pad( 0x48 );
-        void *Win32StartAddress; // 0x6a0
-        pad( 0x10 );
-        LIST_ENTRY ThreadListEntry; // 0x6b8
-    };
+    using namespace w1903;
 }
+
+#pragma pack( pop )

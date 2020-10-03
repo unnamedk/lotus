@@ -32,6 +32,9 @@
     <Filter Include="Header Files\comms">
       <UniqueIdentifier>{4208d9f3-fc24-4f23-baea-3f8369712258}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\comms">
+      <UniqueIdentifier>{9cba763e-4dd6-43ca-9e42-bf18d52e88a7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="lotus.inf">
@@ -48,14 +51,17 @@
     <ClCompile Include="native\driver.cpp">
       <Filter>Source Files\native</Filter>
     </ClCompile>
+    <ClCompile Include="comms\handler.cpp">
+      <Filter>Source Files\comms</Filter>
+    </ClCompile>
     <ClCompile Include="native\imports.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\native</Filter>
     </ClCompile>
     <ClCompile Include="utils\utils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
-    <ClCompile Include="comms\handler.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="native\system_process.cpp">
+      <Filter>Source Files\native</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -84,6 +90,9 @@
     </ClInclude>
     <ClInclude Include="comms\handler.hpp">
       <Filter>Header Files\comms</Filter>
+    </ClInclude>
+    <ClInclude Include="native\system_process.hpp">
+      <Filter>Header Files\native</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

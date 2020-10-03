@@ -6,7 +6,7 @@ namespace handler
 {
     extern HANDLE g_section_handle;
 
-        enum class request_code
+    enum class request_code
     {
         none = 0x0,
         copy_mem = 0x701,
@@ -17,7 +17,6 @@ namespace handler
         free_mem = 0x706,
         query_mem = 0x707,
         remove_nx_prot = 0x708,
-        extend_module = 0x709
     };
 
     enum class request_status
@@ -87,13 +86,6 @@ namespace handler
         MEMORY_BASIC_INFORMATION information;
     };
 
-    struct extend_module_request : public kernel_base_request
-    {
-        unsigned long pid;
-        uintptr_t module_ldr_entry;
-        unsigned long size;
-    };
-
     struct spoof_request : public kernel_base_request
     {
         unsigned int seed;
@@ -110,4 +102,13 @@ namespace handler
     void init();
 
     void NTAPI main_loop( void *ctx );
+
+    // request reader
+    void copy_memory( copy_memory_request *request );
+    void get_process_base( process_base_request *request );
+    void allocate_memory( allocate_memory_request *request );
+    void free_memory( free_memory_request *request );
+    void protect_memory( protect_memory_request *request );
+    void query_memory( query_memory_request *request );
+    void remove_nx_protect( remove_nx_protect_request *request );
 }

@@ -180,6 +180,7 @@
     </ClCompile>
     <ClCompile Include="native\driver.cpp" />
     <ClCompile Include="native\imports.cpp" />
+    <ClCompile Include="native\system_process.cpp" />
     <ClCompile Include="utils\mem.cpp" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
@@ -190,6 +191,7 @@
     <ClInclude Include="comms\handler.hpp" />
     <ClInclude Include="native\driver.hpp" />
     <ClInclude Include="native\imports.hpp" />
+    <ClInclude Include="native\system_process.hpp" />
     <ClInclude Include="native\types.hpp" />
     <ClInclude Include="utils\log.hpp" />
     <ClInclude Include="utils\mem.hpp" />
