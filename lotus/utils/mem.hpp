@@ -65,8 +65,8 @@ namespace utils::mem
         std::uintptr_t m_address;
     };
 
-    utils::mem::offset_t find_pattern( std::uintptr_t base, std::uint64_t size, const char *pattern ) noexcept;
-    utils::mem::offset_t find_pattern( native::system_driver& driver, const char *pattern ) noexcept;
+    utils::mem::offset_t find_pattern( std::uintptr_t base, std::uint64_t size, const char *pattern, std::uint64_t section = 0 ) noexcept;
+    utils::mem::offset_t find_pattern( native::system_driver& driver, const char *pattern, std::uint64_t section = 0 ) noexcept;
     void *alloc( std::uint64_t sz ) noexcept;
     void free( void *ptr, unsigned long tag = 'enoN' ) noexcept;
 }

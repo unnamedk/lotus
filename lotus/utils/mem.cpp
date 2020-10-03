@@ -1,8 +1,9 @@
 #include "mem.hpp"
 #include <ntifs.h>
 #include "../native/driver.hpp"
+#include "../native/imports.hpp"
 
-utils::mem::offset_t utils::mem::find_pattern( const std::uintptr_t start, const std::uint64_t size, const char *pattern ) noexcept
+utils::mem::offset_t utils::mem::find_pattern( const std::uintptr_t start, const std::uint64_t size, const char *pattern, std::uint64_t section ) noexcept
 {
     auto matches = []( std::uint8_t *base, std::uint8_t *pat, std::uint8_t *mask ) {
         std::uint64_t n = 0;
@@ -47,11 +48,35 @@ utils::mem::offset_t utils::mem::find_pattern( const std::uintptr_t start, const
     *msk = 0;
     pat = patt_base;
     msk = msk_base;
-    for ( std::uint32_t n = 0; n < ( size - l ); ++n ) {
-        if ( matches( ((std::uint8_t*) start ) + n, patt_base, msk_base ) ) {
-            free( patt_base );
-            free( msk_base );
-            return start + n;
+
+    if (section == 0ull) {
+        // scan whole module
+        for ( std::uint32_t n = 0; n < ( size - l ); ++n ) {
+            if ( matches( ( ( std::uint8_t * ) start ) + n, patt_base, msk_base ) ) {
+                free( patt_base );
+                free( msk_base );
+                return start + n;
+            }
+        }
+    } else {
+        // scan specific section
+        auto nt = RtlImageNtHeader( reinterpret_cast<void *>( start ) );
+
+
+        auto section_list = IMAGE_FIRST_SECTION( nt );
+        for ( int i = 0; i < nt->FileHeader.NumberOfSections; ++i ) {
+            auto s = section_list[ i ];
+
+            if ( section == *reinterpret_cast<std::uint64_t *>( s.Name ) ) {
+                for ( std::uint32_t n = 0; n < ( s.SizeOfRawData - l ); ++n ) {
+                    if ( matches( start + ( ( std::uint8_t * ) s.VirtualAddress ) + n, patt_base, msk_base ) ) {
+                        free( patt_base );
+                        free( msk_base );
+                        return start + s.VirtualAddress  + n;
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -60,9 +85,9 @@ utils::mem::offset_t utils::mem::find_pattern( const std::uintptr_t start, const
     return 0ull;
 }
 
-utils::mem::offset_t utils::mem::find_pattern( native::system_driver &driver, const char *pattern ) noexcept
+utils::mem::offset_t utils::mem::find_pattern( native::system_driver &driver, const char *pattern, std::uint64_t section ) noexcept
 {
-    return find_pattern( driver.base(), driver.size(), pattern );
+    return find_pattern( driver.base(), driver.size(), pattern, section );
 }
 
 void *utils::mem::alloc( std::uint64_t sz ) noexcept

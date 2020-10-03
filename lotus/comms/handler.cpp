@@ -85,14 +85,13 @@ void handler::clear_loaded_drivers()
     };
 
     auto &ntoskrnl = utils::get_kernel_base();
-
     auto purge_db_cache = [&ntoskrnl]() {
-        auto cache_table = utils::mem::find_pattern( ntoskrnl, "48 8D 0D ? ? ? ? 45 33 F6 48 89 44 24 50" )
+        auto cache_table = utils::mem::find_pattern( ntoskrnl, "48 8D 0D ? ? ? ? 45 33 F6 48 89 44 24 50", 'EGAP' )
                                .skip_bytes( 3 )
                                .resolve_rip()
                                .get<RTL_AVL_TABLE *>();
 
-        auto db_lock = utils::mem::find_pattern( ntoskrnl, "48 8D 0D ? ? ? ? E8 ? ? ? ? 4C 8B 8C 24 88 00 00 00" )
+        auto db_lock = utils::mem::find_pattern( ntoskrnl, "48 8D 0D ? ? ? ? E8 ? ? ? ? 4C 8B 8C 24 88 00 00 00", 'EGAP' )
                            .skip_bytes( 3 )
                            .resolve_rip()
                            .get<ERESOURCE *>();
@@ -119,7 +118,7 @@ void handler::clear_loaded_drivers()
 
     purge_db_cache();
 
-    auto mi_remember_unloaded_driver = utils::mem::find_pattern( ntoskrnl, "8B 05 ? ? ? ? 83 F8 ? 0F 83 ? ? ? ? 48 8D 0C 80" );
+    auto mi_remember_unloaded_driver = utils::mem::find_pattern( ntoskrnl, "8B 05 ? ? ? ? 83 F8 ? 0F 83 ? ? ? ? 48 8D 0C 80", 'EGAP' );
     auto last_unloaded = utils::mem::offset_t { mi_remember_unloaded_driver.get() }
                              .skip_bytes( 2 )
                              .resolve_rip()
