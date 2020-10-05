@@ -94,5 +94,8 @@
     <ClInclude Include="native\system_process.hpp">
       <Filter>Header Files\native</Filter>
     </ClInclude>
+    <ClInclude Include="native\smbios_types.hpp">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

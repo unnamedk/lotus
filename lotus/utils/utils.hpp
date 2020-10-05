@@ -7,4 +7,5 @@ namespace utils {
     void *query_system_information( std::int32_t info_code ) noexcept;
 
     void unlink_thread( void* process, void* thread_id ) noexcept;
+    std::uint64_t hash( void *buffer, int len, int seed );
 }

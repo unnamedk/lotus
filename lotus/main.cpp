@@ -6,7 +6,7 @@
 
 void init()
 {
-    log( "hello world!\n" );
+    logd( "hello world!\n" );
 
     KeEnterGuardedRegion();
 

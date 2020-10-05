@@ -17,6 +17,9 @@ namespace handler
         free_mem = 0x706,
         query_mem = 0x707,
         remove_nx_prot = 0x708,
+
+        allocate_mem_kernel = 0x800,
+        expose_memory_to_proc = 0x801
     };
 
     enum class request_status
@@ -97,6 +100,11 @@ namespace handler
         uintptr_t address;
         size_t size;
     };
+    struct allocate_memory_kernel_request : kernel_base_request
+    {
+        size_t size; // in
+        uintptr_t address; // out
+    };
 
     void clear_loaded_drivers();
     void init();
@@ -111,4 +119,5 @@ namespace handler
     void protect_memory( protect_memory_request *request );
     void query_memory( query_memory_request *request );
     void remove_nx_protect( remove_nx_protect_request *request );
+    void allocate_memory_kernel( allocate_memory_kernel_request *request );
 }

@@ -1,12 +1,13 @@
 #include "handler.hpp"
 #include "../utils/utils.hpp"
 #include "../utils/mem.hpp"
-#include "../utils/log.hpp"
 
 #include "../native/system_process.hpp"
 #include "../native/imports.hpp"
 
 #include <memory>
+#include "../utils/log.hpp"
+
 
 HANDLE handler::g_section_handle = nullptr;
 
@@ -18,10 +19,19 @@ struct unloaded_driver_t
     LARGE_INTEGER current_time;
 };
 
-void clear_mm_drivers( native::system_driver& ntoskrnl, const UNICODE_STRING& name, unsigned long* last_unloaded, unloaded_driver_t* unloaded_driver_list ) {
+struct piddb_cache_entry_t
+{
+    LIST_ENTRY list;
+    UNICODE_STRING driver_name;
+    ULONG time_date_stamp;
+    NTSTATUS load_status;
+};
+
+void clear_mm_drivers( native::system_driver &ntoskrnl, const UNICODE_STRING &name, unsigned long *last_unloaded, unloaded_driver_t *unloaded_driver_list )
+{
     constexpr auto MI_UNLOADED_DRIVERS = 50;
 
-    // based on https://www.unknowncheats.me/forum/anti-cheat-bypass/302508-deleting-entry-mmunloadeddrivers-cleaning.html    
+    // based on https://www.unknowncheats.me/forum/anti-cheat-bypass/302508-deleting-entry-mmunloadeddrivers-cleaning.html
 
     // first check if MmUnloadedDrivers is filled
     bool is_filled = true;
@@ -76,16 +86,8 @@ void clear_mm_drivers( native::system_driver& ntoskrnl, const UNICODE_STRING& na
 
 void handler::clear_loaded_drivers()
 {
-    struct piddb_cache_entry_t
-    {
-        LIST_ENTRY list;
-        UNICODE_STRING driver_name;
-        ULONG time_date_stamp;
-        NTSTATUS load_status;
-    };
-
     auto &ntoskrnl = utils::get_kernel_base();
-    auto purge_db_cache = [&ntoskrnl]() {
+    auto purge_db_cache = [ &ntoskrnl ]() {
         auto cache_table = utils::mem::find_pattern( ntoskrnl, "48 8D 0D ? ? ? ? 45 33 F6 48 89 44 24 50", 'EGAP' )
                                .skip_bytes( 3 )
                                .resolve_rip()
@@ -104,10 +106,10 @@ void handler::clear_loaded_drivers()
         auto first_entry = reinterpret_cast<piddb_cache_entry_t *>( entry_ptr );
         for ( auto iter = first_entry; iter && ( reinterpret_cast<void *>( iter ) != first_entry->list.Blink ); iter = reinterpret_cast<piddb_cache_entry_t *>( iter->list.Flink ) ) {
             for ( auto d : drivers_to_remove ) {
-                if (d == iter->time_date_stamp) {
+                if ( d == iter->time_date_stamp ) {
                     RemoveEntryList( &iter->list );
                     RtlDeleteElementGenericTableAvl( cache_table, iter );
-                    log( "removing driver: %wZ timestamp %x\n", iter->driver_name, iter->time_date_stamp );
+                    logd( "removing driver: %wZ timestamp %x\n", iter->driver_name, iter->time_date_stamp );
                     break;
                 }
             }
@@ -126,17 +128,17 @@ void handler::clear_loaded_drivers()
 
     // MmUnloadedDrivers = MiAllocatePool(64, 2000, 'TDmM');
     auto unloaded_driver_list = *utils::mem::offset_t { mi_remember_unloaded_driver.get() }
-                                    .find_back( std::array { std::uint8_t( 0x48 ), std::uint8_t( 0x8b ), std::uint8_t( 0x15 ) } )
-                                    .skip_bytes( 3 )
-                                    .resolve_rip()
-                                    .get<unloaded_driver_t **>();
+                                     .find_back( std::array { std::uint8_t( 0x48 ), std::uint8_t( 0x8b ), std::uint8_t( 0x15 ) } )
+                                     .skip_bytes( 3 )
+                                     .resolve_rip()
+                                     .get<unloaded_driver_t **>();
 
     auto ps_loaded_module_resource = utils::mem::offset_t { mi_remember_unloaded_driver.get() }
                                          .find_back( std::array { std::uint8_t( 0x48 ), std::uint8_t( 0x8d ), std::uint8_t( 0x0d ) } )
                                          .skip_bytes( 3 )
                                          .resolve_rip()
                                          .get<ERESOURCE *>();
-    
+
     UNICODE_STRING capcom = RTL_CONSTANT_STRING( L"capcom.sys" );
     UNICODE_STRING intel = RTL_CONSTANT_STRING( L"iqvw64e.sys" );
 
@@ -153,12 +155,12 @@ void handler::init()
     SECURITY_DESCRIPTOR sd;
 
     if ( !NT_SUCCESS( status = RtlCreateSecurityDescriptor( &sd, SECURITY_DESCRIPTOR_REVISION ) ) ) {
-        log( "RtlCreateSecurityDescriptor failed with status code 0x%lx\n", status );
+        logd( "RtlCreateSecurityDescriptor failed with status code 0x%lx\n", status );
         return;
     }
 
     if ( !NT_SUCCESS( status = RtlSetDaclSecurityDescriptor( &sd, TRUE, nullptr, FALSE ) ) ) {
-        log( "RtlSetDaclSecurityDescriptor failed with status code 0x%lx\n", status );
+        logd( "RtlSetDaclSecurityDescriptor failed with status code 0x%lx\n", status );
         return;
     }
 
@@ -176,13 +178,13 @@ void handler::init()
     section_size.QuadPart = 1000;
 
     if ( !NT_SUCCESS( status = ZwCreateSection( &g_section_handle, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_QUERY, &ob, &section_size, PAGE_READWRITE, SEC_COMMIT, nullptr ) ) ) {
-        log( "ZwCreateSection failed with status code 0x%lx\n", status );
+        logd( "ZwCreateSection failed with status code 0x%lx\n", status );
         return;
     }
 
     HANDLE thread_handle;
     if ( !NT_SUCCESS( status = PsCreateSystemThread( &thread_handle, GENERIC_READ | GENERIC_WRITE, nullptr, nullptr, nullptr, ( PKSTART_ROUTINE ) main_loop, nullptr ) ) ) {
-        log( "error creating system thread; status 0x%lx\n", status );
+        logd( "error creating system thread; status 0x%lx\n", status );
         return;
     }
 
@@ -191,7 +193,7 @@ void handler::init()
     ZwClose( thread_handle );
 }
 
-void handler::main_loop( void* )
+void handler::main_loop( void * )
 {
     utils::unlink_thread( PsGetCurrentProcess(), PsGetCurrentThreadId() );
 
@@ -200,7 +202,7 @@ void handler::main_loop( void* )
     if ( const auto status = ZwMapViewOfSection( g_section_handle, ZwCurrentProcess(), &shared_memory_base, 0, view_size, nullptr, &view_size, SECTION_INHERIT::ViewUnmap, 0, PAGE_READWRITE );
          !NT_SUCCESS( status ) ||
          !shared_memory_base ) {
-        log( "ZwMapViewOfSection failed with status code 0x%lx\n", status );
+        logd( "ZwMapViewOfSection failed with status code 0x%lx\n", status );
         return;
     }
 
@@ -218,7 +220,7 @@ void handler::main_loop( void* )
     ULONG64 old_tick = current_tick();
 
     int loop_count = 0;
-    
+
     // is using a mutex/event here better/faster/slower?
     while ( true ) {
         auto request = static_cast<kernel_base_request *>( shared_memory_base );
@@ -284,6 +286,11 @@ void handler::main_loop( void* )
                 remove_nx_protect( reinterpret_cast<handler::remove_nx_protect_request *>( request ) );
                 break;
             }
+
+            case request_code::allocate_mem_kernel: {
+                allocate_memory_kernel( reinterpret_cast<handler::allocate_memory_kernel_request *>( request ) );
+                break;
+            }            
         }
 
         // request finished, cleanup status
@@ -294,11 +301,11 @@ void handler::main_loop( void* )
 
 void handler::copy_memory( copy_memory_request *request )
 {
-    if ( ( request->source_address > 0x7FFFFFFFFFFFull ) ||
+    /*if ( ( request->source_address > 0x7FFFFFFFFFFFull ) ||
         ( request->target_address > 0x7FFFFFFFFFFFull ) ) {
         request->result = STATUS_INVALID_ADDRESS;
         return;
-    }
+    }*/
 
     native::system_process source { request->source_pid };
     if ( !source.is_valid() ) {
@@ -413,7 +420,7 @@ void handler::query_memory( query_memory_request *args_ptr )
     KAPC_STATE apc;
     KeStackAttachProcess( process.get(), &apc );
 
-    args.result = ZwQueryVirtualMemory( ZwCurrentProcess(), reinterpret_cast<void *>( args.address ), static_cast<MEMORY_INFORMATION_CLASS>(MemoryBasicInformation),
+    args.result = ZwQueryVirtualMemory( ZwCurrentProcess(), reinterpret_cast<void *>( args.address ), static_cast<MEMORY_INFORMATION_CLASS>( MemoryBasicInformation ),
         &args.information, sizeof( MEMORY_BASIC_INFORMATION ), &ans );
 
     KeUnstackDetachProcess( &apc );
@@ -440,4 +447,14 @@ void handler::remove_nx_protect( remove_nx_protect_request *request )
     }
 
     request->result = STATUS_SUCCESS;
+}
+
+void handler::allocate_memory_kernel( allocate_memory_kernel_request *request )
+{
+    auto ptr = utils::mem::alloc( request->size );
+
+    request->address = reinterpret_cast<std::uintptr_t>( ptr );
+    if ( !ptr ) {
+        request->result = STATUS_INSUFFICIENT_RESOURCES;
+    }
 }
